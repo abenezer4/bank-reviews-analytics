@@ -1,0 +1,23 @@
+# Core dependencies
+requests>=2.25.1
+beautifulsoup4>=4.9.3
+pandas>=1.3.0
+numpy>=1.21.0
+sqlite3
+
+# NLP libraries
+nltk>=3.6.2
+textblob>=0.15.3
+
+# Visualization
+matplotlib>=3.4.2
+seaborn>=0.11.1
+
+# Data processing
+scikit-learn>=1.0.0
+
+# Utilities
+python-dotenv>=0.18.0
+
+# Google Play Scraper
+google-play-scraper>=1.2.0
