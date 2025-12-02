@@ -12,6 +12,21 @@ This script cleans and preprocesses the scraped reviews data.
 import sys
 # Import the os module to handle file paths and operating system functionalities
 import os
+# NLP imports for Task 2 style preprocessing
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+# Make sure required NLTK data is available (safe to call multiple times)
+for resource in ["punkt","punkt_tab", "stopwords", "wordnet"]:
+    try:
+        if resource == "punkt":
+            nltk.data.find("tokenizers/punkt")
+        else:
+            nltk.data.find(f"corpora/{resource}")
+    except LookupError:
+        nltk.download(resource)
+
 
 # Add the parent directory of the current script to the Python path
 # This allows us to import modules from the parent directory (like config.py if it were there, or siblings)
@@ -208,6 +223,56 @@ class ReviewPreprocessor:
         # Record statistics about text cleaning
         self.stats['empty_reviews_removed'] = removed
         self.stats['count_after_cleaning'] = len(self.df)
+    def nlp_preprocess_text(self):
+            """
+            NLP-level preprocessing for Task 2:
+            - Tokenization
+            - Stop-word removal
+            - Lemmatization
+
+            Produces:
+            - 'tokens' column (list of lemmas)
+            - 'clean_text' column (space-joined lemmas)
+            """
+            print("\n[5/6] NLP preprocessing (tokenize, remove stopwords, lemmatize).")
+
+            # Initialize stopwords and lemmatizer
+            stop_words = set(stopwords.words("english"))
+            lemmatizer = WordNetLemmatizer()
+
+            def process_text(text):
+                # Handle missing/empty text safely
+                if pd.isna(text) or text == "":
+                    return []
+
+                # 1. Lowercase
+                text = str(text).lower()
+
+                # 2. Tokenize
+                tokens = nltk.word_tokenize(text)
+
+                # 3. Keep only alphanumeric tokens
+                tokens = [re.sub(r"[^a-z0-9]+", "", t) for t in tokens]
+                tokens = [t for t in tokens if t]  # drop empty strings
+
+                # 4. Remove stopwords
+                tokens = [t for t in tokens if t not in stop_words]
+
+                # 5. Lemmatize
+                lemmas = [lemmatizer.lemmatize(t) for t in tokens]
+
+                return lemmas
+
+            # Apply to review_text
+            self.df["tokens"] = self.df["review_text"].apply(process_text)
+
+            # Join back into a clean_text column for TF-IDF, etc.
+            self.df["clean_text"] = self.df["tokens"].apply(lambda toks: " ".join(toks))
+
+            # (Optional) simple stats
+            print("Example tokens/clean_text:")
+            print(self.df[["review_text", "tokens", "clean_text"]].head(3))
+
 
     def validate_ratings(self):
         """Validate rating values (should be 1-5)"""
@@ -239,6 +304,8 @@ class ReviewPreprocessor:
         output_columns = [
             'review_id',
             'review_text',
+            'clean_text',  # <-- needed for TF-IDF and theme mapping
+            'tokens', 
             'rating',
             'review_date',
             'review_year',
@@ -385,6 +452,7 @@ class ReviewPreprocessor:
         self.normalize_dates()
         self.drop_amharic_reviews() 
         self.clean_text()
+        self.nlp_preprocess_text()
         self.validate_ratings()
         self.prepare_final_output()
 
